@@ -1,0 +1,40 @@
+http://www.javabloger.com/java-development-concern-those-things/
+http://soledede.iteye.com/blog/2178123
+
+JVM
+JEE容器中运行的JVM参数配置参数的正确使用直接关系到整个系统的性能和处理能力，JVM的调优主要是对内存管理方面的调优，优化的方向分为以下4点：
+1.HeapSize 堆的大小，也可以说Java虚拟机使用内存的策略，这点是非常关键的。
+2.GarbageCollector 通过配置相关的参数进行Java中的垃圾收集器的4个算法(策略)进行使用。
+3.StackSize 栈是JVM的内存指令区,每个线程都有他自己的Stack，Stack的大小限制着线程的数量。
+4.DeBug/Log 在JVM中还可以设置对JVM运行时的日志和JVM挂掉后的日志输出，这点非常的关键，根据各类JVM的日志输出才能配置合适的参数。
+网上随处可见JVM的配置技巧，但是我还是推荐阅读Sun官方的2篇文章，可以对配置参数的其所依然有一个了解
+1.Java HotSpot VM Options
+Java HotSpot VM Options
+2.Troubleshooting Guide for Java SE 6 with HotSpot VMTroubleshooting Guide for Java SE 6 with HotSpot VM
+另外，我相信不是每个人攻城师都是天天对着这些JVM参数的，如果你忘记了那些关键的参数你可以输入Java -X(大写X)进行提示。
+JDBC
+针对MySQL的JDBC的参数在之前的文章中也有介绍过，在单台机器或者集群的环境下合理的使用JDBC中的配置参数对操作数据库也有很大的影响。
+一些所谓高性能的 Java ORM开源框架也就是打开了很多JDBC中的默认参数：
+1.例如：autoReconnect、prepStmtCacheSize、cachePrepStmts、useNewIO、blobSendChunkSize 等，
+2.例如集群环境下：roundRobinLoadBalance、failOverReadOnly、autoReconnectForPools、secondsBeforeRetryMaster。
+具体内容可以参阅MySQL的JDBC官方使用手册：
+http://dev.mysql.com/doc/refman/5.1/zh/connectors.html#cj-jdbc-reference
+数据库连接池(DataSource)
+应用程序与数据库连接频繁的交互会给系统带来瓶颈和大量的开销会影响到系统的性能，JDBC连接池负责分配、管理和释放数据库连接，它允许应用程序重复使用一个现有的数据库连接，而再不是重新建立一个连接，因此应用程序不需要频繁的与数据库开关连接，并且可以释放空闲时间超过最大空闲时间的数据库连接来避免因为没有释放数据库连接而引起的数据库连接遗漏。这项技术能明显提高对数据库操作的性能。
+在此我认为有一点需要说明：
+连接池的使用也是需要关闭，因为在数据库连接池启动的时候就预先和数据库获得了相应的连接，之后不再需要应用程序直接的和数据库打交道，因为应用程序使用数据库连接池是一个“借”的概念，应用程序从数据库连接池中获得资源是“借出”，还需要还回去，就好比有20个水桶放在这里，需要拿水的人都可以使用这些木桶从水池里面拿水，如果20个人都拿完水，不将水桶还回原地，那么后面来的人再需要拿水，只能在旁边等待有人将木桶还回去，之前的人用完后需要放回去，不然后面的人就会一直等待，造成资源堵塞，同理，应用程序获取数据库连接的时候Connection连接对象的时候是从“池”中分配一个数据库连接出去，在使用完毕后，归还这个数据库连接，这样才能保持数据库的连接“有借有还”准则。
+参考资料：
+http://dev.mysql.com/doc/refman/5.1/zh/connectors.html#cj-connection-pooling
+数据存取
+数据库服务器的优化和数据的存取，什么类型的数据放在什么地方更好是值得去思考的问题，将来的存储很可能是混用的，Cache，NOSQL，DFS，DataBase 在一个系统中都会有，生活的餐具和平日里穿衣服需要摆放在家里，但是不会用同一种类型的家具存放，貌似没有那个人家把餐具和衣服放在同一个柜子里面的。这就像是系统中不同类型的数据一样，对不同类型的数据需要使用合适的存储环境。文件和图片的存储，首先按照访问的热度分类，或者按照文件的大小。强关系类型并且需要事务支持的采用传统的数据库，弱关系型不需要事务支持的可以考虑NOSQL，海量文件存储可以考虑一下支持网络存储的DFS，至于缓存要看你单个数据存储的大小和读写的比例。
+还有一点值得注意就是数据读写分离，无论在DataBase还是NOSQL的环境中大部分都是读大于写，因此在设计时还需考虑 不仅仅需要让数据的读分散在多台机器上，还需要考虑多台机器之间的数据一致性，MySQL的一主多从，在加上MySQL-Proxy或者借用JDBC中的一些参数(roundRobinLoadBalance、failOverReadOnly、autoReconnectForPools、secondsBeforeRetryMaster)对后续应用程序开发，可以将读和写分离，将大量读的压力分散在多台机器上，并且还保证了数据的一致性。
+缓存
+在宏观上看缓存一般分为2种：本地缓存和分布式缓存
+1.本地缓存，对于Java的本地缓存而言就是讲数据放入静态(static)的数据结合中，然后需要用的时候就从静态数据结合中拿出来,对于高并发的环境建议使用 ConcurrentHashMap或者CopyOnWriteArrayList作为本地缓存。缓存的使用更具体点说就是对系统内存的使用，使用多少内存的资源需要有一个适当比例，如果超过适当的使用存储访问，将会适得其反，导致整个系统的运行效率低下。
+2. 分布式缓存，一般用于分布式的环境，将每台机器上的缓存进行集中化的存储，并且不仅仅用于缓存的使用范畴，还可以作为分布式系统数据同步/传输的一种手段，一般被使用最多的就是Memcached和Redis。
+数据存储在不同的介质上读/写得到的效率是不同的，在系统中如何善用缓存，让你的数据更靠近cpu，下面有一张图你需要永远牢记在心里，来自Google的技术大牛Jeff Dean(Ref)的杰作，如图所示：
+
+并发/多线程
+在高并发环境下建议开发者使用JDK中自带的并发包(java.util.concurrent)，在JDK1.5以后使用java.util.concurrent下的工具类可以简化多线程开发，在java.util.concurrent的工具中主要分为以下几个主要部分：
+1.线程池，线程池的接口(Executor、ExecutorService)与实现类(ThreadPoolExecutor、 ScheduledThreadPoolExecutor），利用jdk自带的线程池框架可以管理任务的排队和安排，并允许受控制的关闭。因为运行一个线程需要消耗系统CPU资源，而创建、结束一个线程也对系统CPU资源有开销，使用线程池不仅仅可以有效的管理多线程的使用，还是可以提高线程的运行效率。
+2.本地队列，提供了高效的、可伸缩的、线程安全的非阻塞 FIFO 队列。java.util.concurrent 中的五个实现都支持扩展的 BlockingQueue 接口，该接口定义了 put 和 take 的阻塞版本：LinkedBlockingQueue、ArrayBlockingQueue、SynchronousQueue、PriorityBlockingQueue 和 DelayQueue。这些不同的类覆盖了生产者-使用者、消息传递、并行任务执行和相关并发设计的大多数常见使用的上下文。
